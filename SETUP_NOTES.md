@@ -292,6 +292,7 @@ a gitignored `.env`. `.env.example` documents every variable.
 |---|---|
 | `TRELLIS_HF_HOME` | `HF_HOME` — TRELLIS checkpoints + CLIP text encoder |
 | `TRELLIS_TORCH_HOME` | `TORCH_HOME` — DINOv2, fetched via `torch.hub` |
+| `TRELLIS_U2NET_HOME` | `U2NET_HOME` — rembg's `u2net.onnx` background remover |
 | `TRELLIS_HSA_RUNTIME` | Explicit path to the system HSA runtime to preload |
 | `ROCM_HOME`, `PYTORCH_ROCM_ARCH` | Override auto-detection |
 | `GRADIO_SERVER_NAME/PORT/SHARE` | Server binding; loopback-only by default |
@@ -309,13 +310,23 @@ Auto-detection instead of hardcoded values:
   working across ROCm upgrades. Override with `ROCM_PKG_SUFFIX=`.
 - **Python dev package** — derived from the running interpreter's version.
 
-### Both caches must be set, or DINOv2 silently re-downloads
+### There are THREE caches, not one — `HF_HOME` covers only the first
 
-`HF_HOME` covers `huggingface_hub` only. DINOv2 comes from `torch.hub`
-(`trellis_image_to_3d.py`) and needs `TORCH_HOME`. Setting just `HF_HOME` leaves
-1.2 GB going back to `~/.cache/torch`.
+Each is read by a different library, so setting only `HF_HOME` silently leaves the
+other two on the root filesystem:
 
-Total weight footprint is ~10.4 GB across the two caches; none of it is in this repo.
+| Cache | Library | Contents | Size |
+|---|---|---|---|
+| `HF_HOME` | `huggingface_hub` | TRELLIS checkpoints, CLIP text encoder | 9.2 GB |
+| `TORCH_HOME` | `torch.hub` | DINOv2 image encoder (`trellis_image_to_3d.py`) | 1.2 GB |
+| `U2NET_HOME` | `rembg` | `u2net.onnx` background remover | 168 MB |
+
+`u2net` is the easy one to miss: `rembg/sessions/base.py` reads `U2NET_HOME` and
+defaults to `~/.u2net`, not `~/.cache`, so it doesn't even show up when auditing
+the usual cache directory. `preprocess_image()` invokes it on every generation
+unless the input image already carries an alpha channel.
+
+Total weight footprint is **~10.5 GB** across the three; none of it is in this repo.
 
 ## Any other PyTorch ROCm app on this machine needs the same preload
 

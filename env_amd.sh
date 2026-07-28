@@ -90,19 +90,25 @@ esac
 # ---------------------------------------------------------------------------
 # Model weight caches (optional).
 #
-# No weights live in this repo; they are fetched on first use. There are TWO
-# independent caches and HF_HOME only covers one:
+# No weights live in this repo; they are fetched on first use. There are THREE
+# independent caches, each with its own env var — HF_HOME covers only the first:
 #
-#   HF_HOME     huggingface_hub -> TRELLIS checkpoints, CLIP text encoder
-#   TORCH_HOME  torch.hub       -> DINOv2 image encoder
-#                                  (see trellis_image_to_3d.py)
+#   HF_HOME     huggingface_hub -> TRELLIS checkpoints, CLIP text encoder  ~9.2 GB
+#   TORCH_HOME  torch.hub       -> DINOv2 image encoder                    ~1.2 GB
+#                                  (trellis_image_to_3d.py)
+#   U2NET_HOME  rembg           -> u2net.onnx background remover           ~168 MB
+#                                  (preprocess_image() uses it on every run
+#                                   unless the input already has alpha;
+#                                   rembg/sessions/base.py reads U2NET_HOME
+#                                   and defaults to ~/.u2net)
 #
-# Set TRELLIS_HF_HOME / TRELLIS_TORCH_HOME in .env to keep ~10 GB of weights off
-# your root filesystem. Left unset, the library defaults (~/.cache) apply.
-# Deleting either cache is never data loss — only a re-download.
+# Set the TRELLIS_* variants in .env to keep ~10.5 GB off your root filesystem.
+# Left unset, each library's own default (~/.cache, ~/.u2net) applies.
+# Deleting any of them is never data loss — only a re-download.
 # ---------------------------------------------------------------------------
 [ -n "${TRELLIS_HF_HOME:-}" ]    && export HF_HOME="${TRELLIS_HF_HOME}"
 [ -n "${TRELLIS_TORCH_HOME:-}" ] && export TORCH_HOME="${TRELLIS_TORCH_HOME}"
+[ -n "${TRELLIS_U2NET_HOME:-}" ] && export U2NET_HOME="${TRELLIS_U2NET_HOME}"
 
 # ---------------------------------------------------------------------------
 # Make `import trellis` work regardless of where the invoked script lives.
