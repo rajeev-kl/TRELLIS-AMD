@@ -12,7 +12,18 @@
 #include "convolution_gather_scatter_cuda.h"
 
 // HIP-compatible atomicAdd for half2 - injected by torchsparse setup.py
-#if defined(__HIP_PLATFORM_AMD__)
+//
+// Newer ROCm provides this natively, as
+//   inline __device__ __half2 atomicAdd(__half2* const, const __half2)
+// in hip/amd_detail/amd_hip_fp16.h, guarded only by __clang__ && __HIP__ with no
+// feature macro to test. Defining the shim as well is a hard "redefinition of
+// 'atomicAdd'" error, so gate it on the HIP version.
+//
+// Verified against the ROCm/clr sources: absent in 6.4.2, 7.0.0 and 7.2.1;
+// present in 7.14. The 7.3 cutoff below is therefore correct at both ends of the
+// range that was checked, but the exact release that introduced it was not
+// pinned down — if a ROCm between 7.3 and 7.13 turns out to lack it, widen this.
+#if defined(__HIP_PLATFORM_AMD__) && (!defined(HIP_VERSION) || HIP_VERSION < 70300000)
 __device__ __forceinline__ half2 atomicAdd(half2* address, half2 val) {
     // Fallback implementation using float atomics
     // Convert half2 to two separate half values, do atomic add via unsigned int CAS

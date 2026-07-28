@@ -12,6 +12,23 @@ from trellis.pipelines import TrellisTextTo3DPipeline
 from trellis.representations import Gaussian, MeshExtractResult
 from trellis.utils import render_utils, postprocessing_utils
 
+# Configure torchsparse for HIP/ROCm compatibility
+# Use GatherScatter dataflow instead of ImplicitGEMM (which requires PTX assembly)
+if os.environ.get('SPARSE_BACKEND') == 'torchsparse' and hasattr(torch.version, 'hip'):
+    try:
+        from torchsparse.nn.functional.conv.conv_config import (
+            Dataflow, set_global_conv_config, _default_conv_config
+        )
+        from torchsparse.nn.functional.conv.conv_mode import set_conv_mode
+        # Force GatherScatter dataflow (avoids ImplicitGEMM which uses PTX)
+        hip_config = _default_conv_config.copy()
+        hip_config['dataflow'] = Dataflow.GatherScatter
+        set_global_conv_config(hip_config)
+        set_conv_mode(0)  # mode0 = basic gather-scatter fallback
+        print("[TORCHSPARSE] Configured for HIP: GatherScatter dataflow, mode0")
+    except Exception as e:
+        print(f"[TORCHSPARSE] Warning: Could not configure for HIP: {e}")
+
 
 MAX_SEED = np.iinfo(np.int32).max
 TMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tmp')

@@ -4,6 +4,29 @@ os.environ['SPCONV_ALGO'] = 'native'        # Can be 'native' or 'auto', default
                                             # 'auto' is faster but will do benchmarking at the beginning.
                                             # Recommended to set to 'native' if run only once.
 
+# AMD/ROCm: enable AOTriton experimental attention paths used by PyTorch SDPA.
+# Must be set before `import torch`. Harmless on CUDA builds (only the ROCm
+# path reads the flag).
+os.environ.setdefault('TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL', '1')
+
+import torch
+
+# Configure torchsparse for HIP/ROCm compatibility (mirrors app.py).
+# Use GatherScatter dataflow instead of ImplicitGEMM (PTX-only).
+if os.environ.get('SPARSE_BACKEND') == 'torchsparse' and hasattr(torch.version, 'hip'):
+    try:
+        from torchsparse.nn.functional.conv.conv_config import (
+            Dataflow, set_global_conv_config, _default_conv_config
+        )
+        from torchsparse.nn.functional.conv.conv_mode import set_conv_mode
+        hip_config = _default_conv_config.copy()
+        hip_config['dataflow'] = Dataflow.GatherScatter
+        set_global_conv_config(hip_config)
+        set_conv_mode(0)
+        print("[TORCHSPARSE] Configured for HIP: GatherScatter dataflow, mode0")
+    except Exception as e:
+        print(f"[TORCHSPARSE] Warning: Could not configure for HIP: {e}")
+
 import imageio
 from trellis.pipelines import TrellisTextTo3DPipeline
 from trellis.utils import render_utils, postprocessing_utils

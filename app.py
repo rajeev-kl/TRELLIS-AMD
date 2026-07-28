@@ -432,5 +432,13 @@ with gr.Blocks(delete_cache=(600, 600)) as demo:
 if __name__ == "__main__":
     pipeline = TrellisImageTo3DPipeline.from_pretrained("microsoft/TRELLIS-image-large")
     pipeline.cuda()
-    demo.launch(server_name="0.0.0.0", share=True)
+    # Local-only by default. Upstream shipped server_name="0.0.0.0", share=True,
+    # which binds every interface AND opens a public *.gradio.live tunnel to this
+    # machine's GPU. Override deliberately via env if you actually want that:
+    #   GRADIO_SERVER_NAME=0.0.0.0 GRADIO_SHARE=1 ./run_app.sh
+    demo.launch(
+        server_name=os.environ.get("GRADIO_SERVER_NAME", "127.0.0.1"),
+        server_port=int(os.environ.get("GRADIO_SERVER_PORT", "7860")),
+        share=os.environ.get("GRADIO_SHARE", "0") == "1",
+    )
 

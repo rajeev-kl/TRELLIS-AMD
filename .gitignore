@@ -66,3 +66,9 @@ tools/raster_repro/results.jsonl
 sample.glb
 sample.ply
 sample_*.mp4
+text_axe.glb
+
+# Vendored header-only ROCm libs (rocPRIM / rocThrust / hipCUB).
+# Third-party upstream clones, each with its own .git — committing them would
+# create broken gitlinks. Regenerate with ./prepare_rocm_headers.sh
+.rocm-headers/

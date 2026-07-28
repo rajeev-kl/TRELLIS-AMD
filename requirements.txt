@@ -18,7 +18,23 @@ xatlas
 pyvista
 pymeshfix
 igraph
-transformers
+
+# Pinned for this checkout. gradio is pinned to 4.44.1 (Sept 2024) below but its
+# transitive stack was left unpinned, so a fresh `pip install` in 2026 resolves
+# libraries that removed APIs this app still calls. Each of these was an actual
+# hard failure, not a precaution:
+#
+#   transformers      5.x pulls huggingface_hub 1.x (below); TRELLIS targets 4.x
+#   huggingface_hub   1.x removed HfFolder, which gradio 4.44.1 imports ->
+#                     `import gradio` failed outright
+#   fastapi           0.140 pulls starlette 1.x, which removed the legacy
+#                     TemplateResponse(name, context) shim that gradio 4.44.1
+#                     still uses -> every page render died with
+#                     "TypeError: unhashable type: 'dict'" (HTTP 500 on the UI).
+#                     0.115.14 brings starlette 0.46.2, which keeps the shim.
+transformers==4.46.3
+huggingface_hub==0.36.2
+fastapi==0.115.14
 
 # Utils3d - specific commit for compatibility
 git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8
